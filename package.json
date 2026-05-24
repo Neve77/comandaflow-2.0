@@ -1,0 +1,14 @@
+{
+  "name": "comanda-full",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "cross-env PORT=3002 VITE_API_URL=http://localhost:3002 VITE_FRONTEND_URL=http://localhost:5173 concurrently \"cross-env PORT=3002 npm --prefix backend run dev\" \"cross-env VITE_API_URL=http://localhost:3002 VITE_FRONTEND_URL=http://localhost:5173 npm --prefix frontend run dev\"",
+    "backend": "cross-env PORT=3002 npm --prefix backend run dev",
+    "frontend": "cross-env VITE_API_URL=http://localhost:3002 VITE_FRONTEND_URL=http://localhost:5173 npm --prefix frontend run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "cross-env": "^7.0.3"
+  }
+}

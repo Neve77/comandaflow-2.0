@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Bracelet {
+  id        String    @id @default(uuid())
+  number    String    @unique
+  status    String    @default("livre")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  comandas  Comanda[]
+}
+
+model Comanda {
+  id               String        @id @default(uuid())
+  bracelet         Bracelet      @relation(fields: [braceletId], references: [id])
+  braceletId       String
+  status           String        @default("aberta")
+  openedAt         DateTime      @default(now())
+  closedAt         DateTime?
+  total            Decimal       @default("0")
+  clienteNome      String        @default("")
+  clienteCpf       String        @default("")
+  clienteTelefone  String        @default("")
+  pedidos          Pedido[]
+}
+
+model Pedido {
+  id           String   @id @default(uuid())
+  comanda      Comanda  @relation(fields: [comandaId], references: [id])
+  comandaId    String
+  produto      Produto? @relation(fields: [produtoId], references: [id])
+  produtoId    String?
+  nome         String
+  quantidade   Int
+  valorUnitario Decimal
+  subtotal     Decimal
+  cancelado    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model Produto {
+  id        String   @id @default(uuid())
+  nome      String
+  preco     Decimal
+  categoria String
+  ativo     Boolean  @default(true)
+  estoque   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pedidos   Pedido[]
+}
