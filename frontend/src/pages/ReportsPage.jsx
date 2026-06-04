@@ -3,8 +3,6 @@ import api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Bar, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
-import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
@@ -54,7 +52,8 @@ export default function ReportsPage() {
     loadReports();
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const margin = 40;
     let y = 50;
@@ -134,7 +133,8 @@ export default function ReportsPage() {
     doc.save(`relatorio-vendas-${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
+    const XLSX = await import('xlsx');
     const summarySheet = [
       ['Relatório de Vendas'],
       ['Gerado em', formatDateTime(new Date())],

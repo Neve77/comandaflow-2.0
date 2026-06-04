@@ -22,10 +22,6 @@ async function makeIcon() {
 const ignorePath = (filePath) => {
   const relative = filePath.replace(`${rootDir}${path.sep}`, '');
 
-  if (relative.startsWith('node_modules')) {
-    return true;
-  }
-
   if (relative.startsWith('frontend') && !relative.startsWith('frontend' + path.sep + 'dist')) {
     return true;
   }
