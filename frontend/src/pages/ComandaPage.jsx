@@ -133,7 +133,7 @@ export default function ComandaPage() {
             <h2 className="mt-2 text-3xl font-semibold text-white">Abertura e busca</h2>
             <p className="mt-1 text-slate-400">Digite o número da pulseira e os dados do cliente para abrir (ou criar) uma comanda na mesma aba.</p>
           </div>
-          <div className="grid w-full max-w-xl gap-3">
+          <div className="grid w-full max-w-full gap-3">
             <input
               className="input-field"
               value={braceletNumber}

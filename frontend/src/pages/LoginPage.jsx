@@ -26,11 +26,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.16),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.12),transparent_20%),linear-gradient(180deg,#05070f_0%,#070b14_100%)] px-4 py-8">
-      <div className="w-full max-w-xl rounded-[2rem] border border-slate-800/80 bg-slate-950/95 p-8 shadow-[0_40px_120px_-80px_rgba(15,23,42,0.9)] backdrop-blur-xl">
+      <div className="w-full max-w-xl lg:max-w-2xl rounded-[2rem] border border-slate-800/80 bg-slate-950/95 p-8 shadow-[0_40px_120px_-80px_rgba(15,23,42,0.9)] backdrop-blur-xl">
         <div className="mb-8 flex flex-col gap-3">
           <span className="text-xs uppercase tracking-[0.35em] text-slate-500">Painel de controle</span>
           <h1 className="text-4xl font-semibold text-white">Acesse seu ambiente</h1>
-          <p className="max-w-xl text-slate-400">Entre com sua conta para gerenciar comandas, pulseiras e relatórios de vendas de forma rápida e intuitiva.</p>
+          <p className="max-w-full lg:max-w-2xl text-slate-400">Entre com sua conta para gerenciar comandas, pulseiras e relatórios de vendas de forma rápida e intuitiva.</p>
         </div>
         <form className="space-y-5" onSubmit={handleSubmit}>
           <label className="block text-sm text-slate-300">

@@ -60,6 +60,19 @@ npm install
 npm run dev  # roda em http://localhost:5173
 ```
 
+### Electron Desktop App
+
+```bash
+# Instalar dependências em todos os pacotes
+npm run install:all
+
+# Executar em modo de desenvolvimento com backend + frontend + Electron
+npm run electron:dev
+
+# Gerar o build do frontend e empacotar para Windows
+npm run build:app
+```
+
 ### Com Docker Compose (Recomendado)
 
 ```bash

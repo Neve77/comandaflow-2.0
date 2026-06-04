@@ -14,7 +14,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen text-slate-100">
       <header className="border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between lg:px-6">
+        <div className="mx-auto flex max-w-8xl flex-col gap-4 px-4 py-5 sm:flex-row sm:items-center sm:justify-between lg:px-8 xl:px-10">
           <div className="space-y-2">
             <p className="text-xs uppercase tracking-[0.35em] text-slate-500">comanda flow</p>
             <div className="flex flex-wrap items-center gap-3">
@@ -34,7 +34,7 @@ export default function Layout() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+      <div className="mx-auto max-w-8xl px-4 py-6 lg:px-8 xl:px-10">
         <div className="mb-6 rounded-[2rem] border border-slate-800/80 bg-slate-900/95 p-5 shadow-xl shadow-slate-950/20">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
