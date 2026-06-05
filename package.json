@@ -42,7 +42,7 @@
     "extraResources": [
       {
         "from": "backend/node_modules",
-        "to": "backend/node_modules"
+        "to": "app/backend/node_modules"
       }
     ],
     "win": {

@@ -8,6 +8,7 @@ const braceletRoutes = require('./routes/bracelets.routes');
 const productRoutes = require('./routes/products.routes');
 const comandaRoutes = require('./routes/comandas.routes');
 const pedidoRoutes = require('./routes/pedidos.routes');
+const clientRoutes = require('./routes/clients.routes');
 const reportRoutes = require('./routes/reports.routes');
 const errorMiddleware = require('./middleware/error.middleware');
 
@@ -63,6 +64,7 @@ app.use('/bracelets', braceletRoutes);
 app.use('/products', productRoutes);
 app.use('/comandas', comandaRoutes);
 app.use('/pedidos', pedidoRoutes);
+app.use('/clients', clientRoutes);
 app.use('/reports', reportRoutes);
 
 app.use(errorMiddleware);

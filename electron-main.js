@@ -2,29 +2,58 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { app, BrowserWindow } = require('electron');
-const { spawn } = require('child_process');
 
-// Force a writable userData folder before app ready
-const forcedUserData = path.join(os.homedir(), 'AppData', 'Roaming', 'ComandaFlow');
-fs.mkdirSync(forcedUserData, { recursive: true });
-fs.mkdirSync(path.join(forcedUserData, 'Cache'), { recursive: true });
-app.setPath('userData', forcedUserData);
-app.setAppUserModelId('com.comandaflow');
-app.commandLine.appendSwitch('user-data-dir', forcedUserData);
-app.commandLine.appendSwitch('disk-cache-dir', path.join(forcedUserData, 'Cache'));
-app.commandLine.appendSwitch('disable-features', 'ServiceWorker');
+// Force a writable userData folder for logging and Chromium storage
+const userDataPath = path.join(app.getPath('appData'), 'ComandaFlow');
+const cachePath = path.join(userDataPath, 'Cache');
+
+// Apply command line switches BEFORE require('electron') code may try to access them
+process.env.ELECTRON_DISABLE_GPU = '1';
+process.env.ELECTRON_OZONE_PLATFORM_HINT = 'auto';
+
+try {
+  fs.mkdirSync(userDataPath, { recursive: true });
+  console.error(`[STARTUP] Created userData dir: ${userDataPath}`);
+} catch (err) {
+  console.error(`[STARTUP] ERROR creating userData dir: ${err.message}`);
+}
+
+try {
+  fs.mkdirSync(cachePath, { recursive: true });
+  console.error(`[STARTUP] Created cache dir: ${cachePath}`);
+} catch (err) {
+  console.error(`[STARTUP] ERROR creating cache dir: ${err.message}`);
+}
+
+app.setPath('userData', userDataPath);
+app.commandLine.appendSwitch('cache-dir', cachePath);
+app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-gpu-compositing');
-app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('disable-accelerated-2d-canvas');
+
+app.setAppUserModelId('com.comandaflow');
+
+console.error(`[STARTUP] userData: ${userDataPath}`);
+console.error(`[STARTUP] cachePath: ${cachePath}`);
+console.error(`[STARTUP] resourcesPath: ${process.resourcesPath}`);
+console.error(`[STARTUP] cwd: ${process.cwd()}`);
+
+// Log with console before anything else
+console.error(`[STARTUP] App starting... pid=${process.pid}`);
+console.error(`[STARTUP] userData: ${userDataPath}`);
+console.error(`[STARTUP] cachePath: ${cachePath}`);
+console.error(`[STARTUP] GPU disabled via env`);
+
 app.disableHardwareAcceleration();
 
 // persistent log file in userData so we capture logs when started by double-click
-const logFilePath = path.join(forcedUserData, 'comandaflow.log');
+const logFilePath = path.join(userDataPath, 'comandaflow.log');
 let logStream = null;
 try {
   logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+  console.error(`[STARTUP] Log stream created at ${logFilePath}`);
 } catch (e) {
+  console.error(`[STARTUP] ERROR creating log stream: ${e.message}`);
   logStream = null;
 }
 
@@ -32,6 +61,22 @@ function writeLog(prefix, msg) {
   const line = `[${new Date().toISOString()}] ${prefix} ${msg}\n`;
   try { if (logStream) logStream.write(line); } catch (e) {}
   try { process.stdout.write(line); } catch (e) {}
+}
+
+function cleanupLegacyCacheDirectories() {
+  const cleanupFolders = ['GPUCache', 'Code Cache', 'Service Worker', 'Cache'];
+  const basePath = app.getPath('userData');
+  for (const folder of cleanupFolders) {
+    const candidate = path.join(basePath, folder);
+    try {
+      if (fs.existsSync(candidate)) {
+        fs.rmSync(candidate, { recursive: true, force: true });
+        writeLog('[cleanup]', `Removed legacy folder: ${candidate}`);
+      }
+    } catch (err) {
+      writeLog('[cleanup][err]', `Failed to remove ${candidate}: ${err.message}`);
+    }
+  }
 }
 
 function loadErrorPage(message) {
@@ -50,12 +95,15 @@ function loadErrorPage(message) {
 function resolveIndexPath() {
   const appPath = app.isPackaged ? app.getAppPath() : __dirname;
   const candidatePaths = [
+    // Dev paths
     path.join(__dirname, 'frontend', 'dist', 'index.html'),
     path.join(__dirname, 'dist', 'index.html'),
-    path.join(appPath, 'frontend', 'dist', 'index.html'),
-    path.join(process.resourcesPath || __dirname, 'frontend', 'dist', 'index.html'),
+    // electron-builder paths (files under resources/app/)
     path.join(process.resourcesPath || __dirname, 'app', 'frontend', 'dist', 'index.html'),
-    path.join(process.resourcesPath || __dirname, 'app.asar', 'frontend', 'dist', 'index.html'),
+    // electron-packager paths (files directly under resources/)
+    path.join(process.resourcesPath || __dirname, 'frontend', 'dist', 'index.html'),
+    // Fallback paths
+    path.join(appPath, 'frontend', 'dist', 'index.html'),
   ];
 
   for (const p of candidatePaths) {
@@ -75,7 +123,6 @@ function resolveIndexPath() {
 const backendPort = process.env.PORT || '3002';
 const startUrl = process.env.ELECTRON_START_URL;
 const isDev = Boolean(startUrl);
-let backendProcess;
 
 const iconPath = path.join(__dirname, 'build', 'icon.png');
 
@@ -123,10 +170,23 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
+    mainWindow.focus();
   });
 
   mainWindow.webContents.on('did-finish-load', () => {
     writeLog('[main]', 'Main window finished loading');
+  });
+
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    writeLog('[renderer]', `[console:${level}] ${message} (${sourceId}:${line})`);
+  });
+
+  mainWindow.webContents.on('crashed', () => {
+    writeLog('[renderer][err]', 'Renderer process crashed');
+  });
+
+  mainWindow.webContents.on('unresponsive', () => {
+    writeLog('[renderer][warn]', 'Renderer unresponsive');
   });
 
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
@@ -155,8 +215,39 @@ function createWindow() {
 }
 
 function startBackend() {
-  const serverPath = path.join(__dirname, 'backend', 'src', 'server.js');
+  const appBasePath = __dirname;
+  
+  // When packaged with electron-builder, files are under resources/app/
+  // When packaged with electron-packager, files are at resources/
+  // In dev, files are in __dirname
+  let serverPath;
+  let backendNodeModules;
+  
+  if (app.isPackaged) {
+    // electron-builder: app files under resources/app/, node_modules at resources/app/backend/
+    const builderServerPath = path.join(process.resourcesPath, 'app', 'backend', 'src', 'server.js');
+    if (fs.existsSync(builderServerPath)) {
+      serverPath = builderServerPath;
+      backendNodeModules = path.join(process.resourcesPath, 'app', 'backend', 'node_modules');
+    } else {
+      // electron-packager: both under resources/
+      serverPath = path.join(process.resourcesPath, 'backend', 'src', 'server.js');
+      backendNodeModules = path.join(process.resourcesPath, 'backend', 'node_modules');
+    }
+  } else {
+    // Development mode
+    serverPath = path.join(appBasePath, 'backend', 'src', 'server.js');
+    backendNodeModules = path.join(appBasePath, 'backend', 'node_modules');
+  }
+
+  console.error(`[BACKEND] app.isPackaged=${app.isPackaged}`);
+  console.error(`[BACKEND] Using server path: ${serverPath}`);
+  console.error(`[BACKEND] Using node_modules path: ${backendNodeModules}`);
+  console.error(`[BACKEND] Server exists: ${fs.existsSync(serverPath)}`);
+  console.error(`[BACKEND] node_modules exists: ${fs.existsSync(backendNodeModules)}`);
+
   if (!fs.existsSync(serverPath)) {
+    console.error('[BACKEND] ERROR: server.js not found!');
     writeLog('[backend][err]', `Arquivo do backend não encontrado: ${serverPath}`);
     if (mainWindow) {
       loadErrorPage('O backend não foi encontrado no pacote. Verifique a instalação ou o build do aplicativo.');
@@ -164,56 +255,45 @@ function startBackend() {
     return;
   }
 
-  const nodeExecutable = isDev ? 'node' : process.execPath;
-  const env = {
-    ...process.env,
-    PORT: backendPort,
-    NODE_ENV: 'production',
-  };
+  try {
+    if (fs.existsSync(backendNodeModules)) {
+      // Prepend to both require.main.paths and Module.globalPaths
+      const Module = require('module');
+      if (!require.main.paths.includes(backendNodeModules)) {
+        require.main.paths.unshift(backendNodeModules);
+      }
+      if (!Module.globalPaths.includes(backendNodeModules)) {
+        Module.globalPaths.unshift(backendNodeModules);
+      }
+      console.error(`[BACKEND] Added node_modules to module search paths`);
+    } else {
+      console.error(`[BACKEND] WARNING: backend node_modules not found at ${backendNodeModules}`);
+    }
 
-  if (!isDev) {
-    env.ELECTRON_RUN_AS_NODE = '1';
-  }
-
-  const spawnOptions = {
-    env,
-    windowsHide: true,
-    detached: false,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  };
-
-  backendProcess = spawn(nodeExecutable, [serverPath], spawnOptions);
-
-  if (backendProcess.stdout) {
-    backendProcess.stdout.on('data', (chunk) => {
-      writeLog('[backend]', chunk.toString());
-    });
-  }
-
-  if (backendProcess.stderr) {
-    backendProcess.stderr.on('data', (chunk) => {
-      writeLog('[backend][err]', chunk.toString());
-    });
-  }
-
-  backendProcess.on('error', (error) => {
+    process.env.PORT = backendPort;
+    console.error('[BACKEND] Loading server.js...');
+    require(serverPath);
+    console.error('[BACKEND] Server loaded successfully!');
+    writeLog('[backend]', 'Backend iniciado no mesmo processo Electron.');
+  } catch (error) {
+    console.error(`[BACKEND] ERROR: ${error.message}`);
+    console.error(error.stack);
     writeLog('[backend][err]', `Erro ao iniciar backend: ${error}`);
     if (mainWindow) {
       loadErrorPage('Falha ao iniciar o backend.');
     }
-  });
-
-  backendProcess.on('exit', (code, signal) => {
-    writeLog('[backend]', `Backend finalizado com código ${code} e sinal ${signal}`);
-    if (code !== 0 && mainWindow) {
-      loadErrorPage('O backend foi finalizado inesperadamente.');
-    }
-  });
+  }
 }
 
+console.error('[STARTUP] Adding app event listeners...');
+
 app.whenReady().then(() => {
+  console.error('[STARTUP] App is ready!');
+  cleanupLegacyCacheDirectories();
   startBackend();
+  console.error('[STARTUP] Backend startup complete, creating window...');
   createWindow();
+  console.error('[STARTUP] Window created');
 });
 
 app.on('activate', () => {
@@ -225,11 +305,5 @@ app.on('activate', () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
-  }
-});
-
-app.on('quit', () => {
-  if (backendProcess) {
-    backendProcess.kill();
   }
 });

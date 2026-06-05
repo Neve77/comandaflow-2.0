@@ -50,30 +50,52 @@ const ignorePath = (filePath) => {
 };
 
 async function main() {
+  console.log('[PACKAGE] Iniciando processo de empacotamento...');
+  console.log('[PACKAGE] Diretório raiz:', rootDir);
+  console.log('[PACKAGE] Diretório de saída:', outDir);
+  
   await makeIcon();
+  console.log('[PACKAGE] Ícone processado com sucesso');
+  
   const rootPkg = require(path.join(rootDir, 'package.json'));
+  console.log('[PACKAGE] Versão do app:', rootPkg.version || '1.0.1');
 
-  const appPaths = await packager({
-    dir: rootDir,
-    out: outDir,
-    overwrite: true,
-    platform: 'win32',
-    arch: 'x64',
-    icon: iconIco,
-    asar: false,
-    prune: true,
-    ignore: ignorePath,
-    name: 'ComandaFlow',
-    appBundleId: 'com.comandaflow',
-    appVersion: rootPkg.version || '1.0.1',
-    executableName: 'ComandaFlow',
-    quiet: false,
-  });
+  // Criar pasta de saída se não existir
+  if (!fs.existsSync(outDir)) {
+    console.log('[PACKAGE] Criando diretório de saída:', outDir);
+    fs.mkdirSync(outDir, { recursive: true });
+  }
 
-  console.log('App empacotado em:', appPaths);
+  console.log('[PACKAGE] Iniciando electron-packager...');
+  
+  try {
+    const appPaths = await packager({
+      dir: rootDir,
+      out: outDir,
+      overwrite: true,
+      platform: 'win32',
+      arch: 'x64',
+      icon: iconIco,
+      asar: false,
+      prune: true,
+      ignore: ignorePath,
+      name: 'ComandaFlow',
+      appBundleId: 'com.comandaflow',
+      appVersion: rootPkg.version || '1.0.1',
+      executableName: 'ComandaFlow',
+      quiet: false,
+    });
+
+    console.log('[PACKAGE] ✓ App empacotado com sucesso');
+    console.log('[PACKAGE] Caminhos:', appPaths);
+  } catch (error) {
+    console.error('[PACKAGE] ✗ Erro ao empacotar:', error.message);
+    throw error;
+  }
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error('[PACKAGE] ✗ ERRO:', err.message);
+  console.error('[PACKAGE] Stack:', err.stack);
   process.exit(1);
 });
