@@ -25,9 +25,17 @@ const io = new Server(server, {
   },
 });
 
+let connectedSockets = 0;
+
 io.on('connection', (socket) => {
+  connectedSockets += 1;
+  app.set('connectedSockets', connectedSockets);
+  io.emit('mobile:connect', { socketId: socket.id, connectedSockets });
   console.log('Cliente conectado:', socket.id);
   socket.on('disconnect', () => {
+    connectedSockets = Math.max(connectedSockets - 1, 0);
+    app.set('connectedSockets', connectedSockets);
+    io.emit('mobile:disconnect', { socketId: socket.id, connectedSockets });
     console.log('Cliente desconectado:', socket.id);
   });
 });

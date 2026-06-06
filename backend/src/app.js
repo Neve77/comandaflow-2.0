@@ -3,14 +3,25 @@ const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const authRoutes = require('./routes/auth.routes');
-const braceletRoutes = require('./routes/bracelets.routes');
-const productRoutes = require('./routes/products.routes');
-const comandaRoutes = require('./routes/comandas.routes');
-const pedidoRoutes = require('./routes/pedidos.routes');
-const clientRoutes = require('./routes/clients.routes');
-const reportRoutes = require('./routes/reports.routes');
-const errorMiddleware = require('./middleware/error.middleware');
+const path = require('path');
+const authRoutes = require('./http/routes/auth.routes');
+const braceletRoutes = require('./http/routes/bracelets.routes');
+const productRoutes = require('./http/routes/products.routes');
+const comandaRoutes = require('./http/routes/comandas.routes');
+const pedidoRoutes = require('./http/routes/pedidos.routes');
+const clientRoutes = require('./http/routes/clients.routes');
+const reportRoutes = require('./http/routes/reports.routes');
+const aiRoutes = require('./http/routes/ai.routes');
+const auditRoutes = require('./http/routes/audit.routes');
+const backupRoutes = require('./http/routes/backup.routes');
+const deviceRoutes = require('./http/routes/devices.routes');
+const eventRoutes = require('./http/routes/events.routes');
+const financeRoutes = require('./http/routes/finance.routes');
+const inventoryRoutes = require('./http/routes/inventory.routes');
+const loyaltyRoutes = require('./http/routes/loyalty.routes');
+const mobileRoutes = require('./http/routes/mobile.routes');
+const errorMiddleware = require('./http/middleware/error.middleware');
+
 
 const app = express();
 
@@ -52,11 +63,15 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(morgan('dev'));
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/mobile', (req, res) => {
+  res.sendFile(path.join(__dirname, 'mobile', 'index.html'));
 });
 
 app.use('/auth', authLimiter, authRoutes);
@@ -66,6 +81,15 @@ app.use('/comandas', comandaRoutes);
 app.use('/pedidos', pedidoRoutes);
 app.use('/clients', clientRoutes);
 app.use('/reports', reportRoutes);
+app.use('/ai', aiRoutes);
+app.use('/audit', auditRoutes);
+app.use('/backup', backupRoutes);
+app.use('/devices', deviceRoutes);
+app.use('/events', eventRoutes);
+app.use('/finance', financeRoutes);
+app.use('/inventory', inventoryRoutes);
+app.use('/loyalty', loyaltyRoutes);
+app.use('/mobile', mobileRoutes);
 
 app.use(errorMiddleware);
 

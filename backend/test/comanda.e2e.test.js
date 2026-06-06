@@ -27,16 +27,28 @@ describe('Comanda E2E', () => {
     comandaId = openRes.body.comanda.id;
     expect(comandaId).toBeTruthy();
 
-    const prod = await prisma.produto.findFirst();
+    const prod = await prisma.produto.create({
+      data: {
+        nome: `Produto E2E ${Date.now()}`,
+        preco: 12.5,
+        categoria: 'Teste',
+        estoque: 10
+      }
+    });
     expect(prod).toBeTruthy();
 
     const pedidoRes = await request(app)
       .post('/pedidos')
       .set('Authorization', `Bearer ${token}`)
-      .send({ comandaId, produtoId: prod.id, nome: prod.nome, quantidade: '1', valorUnitario: prod.preco.toString() })
+      .send({ comandaId, produtoId: prod.id, nome: 'Nome adulterado', quantidade: '1', valorUnitario: '0.01' })
       .expect(201);
 
     expect(pedidoRes.body.pedido).toBeTruthy();
+    expect(pedidoRes.body.pedido.nome).toBe(prod.nome);
+    expect(Number(pedidoRes.body.pedido.valorUnitario)).toBe(Number(prod.preco));
+
+    const productAfterPedido = await prisma.produto.findUnique({ where: { id: prod.id } });
+    expect(productAfterPedido.estoque).toBe(prod.estoque - 1);
 
     await request(app)
       .post(`/comandas/${comandaId}/close`)

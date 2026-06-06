@@ -1,14 +1,14 @@
-const prisma = require('../prisma/client');
+const prisma = require('../infra/prisma/client');
 
-const createBracelet = async (number) => {
+const createBracelet = async ({ number, type = 'QR' }) => {
   const existing = await prisma.bracelet.findUnique({ where: { number } });
   if (existing) {
-    const error = new Error('Número de pulseira já existe');
+    const error = new Error('Numero de pulseira ja existe');
     error.status = 409;
     throw error;
   }
 
-  return prisma.bracelet.create({ data: { number } });
+  return prisma.bracelet.create({ data: { number, type } });
 };
 
 const listAll = async () => {
@@ -19,19 +19,22 @@ const listAll = async () => {
         where: { status: 'aberta' },
         take: 1,
         include: {
-          pedidos: true
+          pedidos: true,
+          event: { select: { id: true, name: true } }
         }
       }
     }
   });
 };
 
-const updateStatus = async (id, status) => {
-  const bracelet = await prisma.bracelet.update({
+const updateStatus = async (id, status, blockedReason = '') => {
+  return prisma.bracelet.update({
     where: { id },
-    data: { status }
+    data: {
+      status,
+      blockedReason: status === 'bloqueada' ? blockedReason || 'Bloqueio manual' : null
+    }
   });
-  return bracelet;
 };
 
 module.exports = { createBracelet, listAll, updateStatus };

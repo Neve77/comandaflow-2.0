@@ -1,5 +1,5 @@
 const { Prisma } = require('@prisma/client');
-const prisma = require('../prisma/client');
+const prisma = require('../infra/prisma/client');
 
 const createProduct = async ({ nome, preco, categoria, estoque = 0, ativo = true }) => {
   return prisma.produto.create({
@@ -22,16 +22,33 @@ const getProduct = async (id) => {
 };
 
 const updateProduct = async (id, data) => {
-  await getProduct(id);
-  return prisma.produto.update({
-    where: { id },
-    data: {
-      nome: data.nome,
-      preco: new Prisma.Decimal(data.preco),
-      categoria: data.categoria,
-      estoque: data.estoque,
-      ativo: data.ativo
+  const current = await getProduct(id);
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.produto.update({
+      where: { id },
+      data: {
+        nome: data.nome,
+        preco: new Prisma.Decimal(data.preco),
+        categoria: data.categoria,
+        estoque: data.estoque,
+        ativo: data.ativo
+      }
+    });
+
+    if (typeof data.estoque === 'number' && data.estoque !== current.estoque) {
+      await tx.stockMovement.create({
+        data: {
+          produtoId: id,
+          type: 'ajuste',
+          quantity: data.estoque,
+          previousStock: current.estoque,
+          newStock: data.estoque,
+          reason: 'Atualizacao manual do produto'
+        }
+      });
     }
+
+    return updated;
   });
 };
 
@@ -45,4 +62,4 @@ const toggleActive = async (id, ativo) => {
   return prisma.produto.update({ where: { id }, data: { ativo } });
 };
 
-module.exports = { createProduct, listAll, getProduct, updateProduct, toggleActive };
+module.exports = { createProduct, listAll, getProduct, updateProduct, deleteProduct, toggleActive };

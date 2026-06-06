@@ -20,7 +20,8 @@ describe('Products API', () => {
     expect(prod).toBeTruthy();
     expect(prod.nome).toBe('Teste Produto');
 
-    // cleanup
-    await prisma.produto.delete({ where: { id: prod.id } });
+    await request(app).delete(`/products/${prod.id}`).set('Authorization', `Bearer ${token}`).expect(204);
+    const deleted = await prisma.produto.findUnique({ where: { id: prod.id } });
+    expect(deleted).toBeNull();
   });
 });

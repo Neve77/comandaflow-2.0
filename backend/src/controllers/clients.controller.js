@@ -19,4 +19,32 @@ const getClientHistory = async (req, res, next) => {
   }
 };
 
-module.exports = { listClients, getClientHistory };
+const saveClient = async (req, res, next) => {
+  try {
+    const client = await clientsService.createOrUpdateClient(req.validated);
+    res.status(201).json({ client });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateBlocked = async (req, res, next) => {
+  try {
+    const { cpf, blocked } = req.validated;
+    const client = await clientsService.setBlocked(cpf, blocked);
+    res.json({ client });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const birthdays = async (req, res, next) => {
+  try {
+    const clients = await clientsService.getBirthdays();
+    res.json({ clients });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { birthdays, getClientHistory, listClients, saveClient, updateBlocked };

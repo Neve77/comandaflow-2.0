@@ -3,57 +3,101 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  --bg: #05070f;
-  --surface: rgba(15, 23, 42, 0.92);
-  --surface-strong: rgba(15, 23, 42, 1);
-  --border: rgba(148, 163, 184, 0.14);
-  --text: #e2e8f0;
-  --muted: #94a3b8;
-  --brand: #8b5cf6;
-  --brand-strong: #7c3aed;
+  color-scheme: light;
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --brand: #2563eb;
+  --brand-strong: #1d4ed8;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   min-height: 100%;
 }
 
 body {
-  @apply text-slate-100 antialiased;
+  @apply bg-slate-100 text-slate-950 antialiased;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-image: radial-gradient(circle at top left, rgba(139, 92, 246, 0.16), transparent 26%),
-    radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.12), transparent 30%),
-    linear-gradient(180deg, #060912 0%, #070b14 100%);
 }
 
-button, input, select, textarea {
-  @apply outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-2 focus:ring-offset-slate-950;
+button,
+input,
+select,
+textarea {
+  @apply outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-2 focus:ring-offset-white;
 }
 
-.card {
-  @apply bg-slate-950/95 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.9)] border border-slate-800 rounded-[2rem];
-}
-
-.panel {
-  @apply bg-slate-900/95 border border-slate-800 rounded-[2rem] shadow-xl shadow-slate-950/20;
+.card,
+.panel,
+.page-header {
+  @apply rounded-lg border border-slate-200 bg-white shadow-sm;
 }
 
 .input-field {
-  @apply w-full rounded-[1.5rem] border border-slate-700/80 bg-slate-950/90 px-4 py-3 text-slate-100 placeholder-slate-500;
-}
-
-.page-header {
-  @apply rounded-[2rem] border border-slate-800/80 bg-slate-900/95 p-6 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.9)];
+  @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-slate-950 placeholder-slate-400;
 }
 
 .nav-pill {
-  @apply rounded-full px-5 py-3 text-sm font-semibold transition;
+  @apply inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition;
 }
 
 .nav-pill-active {
-  @apply bg-brand-600 text-white shadow-lg shadow-brand-600/30;
+  @apply bg-slate-950 text-white;
 }
 
 .status-chip {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  @apply inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium;
+}
+
+/* Keep legacy dark page components readable while the app moves to the cleaner shell. */
+.panel .bg-slate-950\/95,
+.panel .bg-slate-950\/90 {
+  background-color: #ffffff;
+}
+
+.panel .bg-slate-900,
+.panel .bg-slate-900\/95,
+.panel .bg-slate-900\/90 {
+  background-color: #f8fafc;
+}
+
+.panel .border-slate-800,
+.panel .border-slate-800\/90,
+.panel .border-slate-800\/80,
+.panel .border-slate-800\/70 {
+  border-color: #e2e8f0;
+}
+
+.panel :where(h1, h2, h3, h4, p, span, div, label).text-white {
+  color: #0f172a;
+}
+
+.panel :where(p, span, div, label).text-slate-300,
+.panel :where(p, span, div, label).text-slate-400,
+.panel :where(p, span, div, label).text-slate-500 {
+  color: #64748b;
+}
+
+.panel button.text-white,
+.panel a.text-white {
+  color: #ffffff;
+}
+
+.panel .bg-slate-800,
+.panel .bg-slate-800\/90,
+.panel .bg-slate-800\/80 {
+  background-color: #e2e8f0;
+  color: #334155;
+}
+
+.rounded-\[2rem\],
+.rounded-\[1\.75rem\],
+.rounded-\[1\.5rem\],
+.rounded-2xl {
+  border-radius: 0.5rem !important;
 }

@@ -11,8 +11,7 @@ const getAll = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const { number } = req.validated;
-    const bracelet = await braceletsService.createBracelet(number);
+    const bracelet = await braceletsService.createBracelet(req.validated);
     res.status(201).json({ bracelet });
   } catch (error) {
     next(error);
@@ -21,8 +20,8 @@ const create = async (req, res, next) => {
 
 const updateStatus = async (req, res, next) => {
   try {
-    const { id, status } = req.validated;
-    const bracelet = await braceletsService.updateStatus(id, status);
+    const { id, status, blockedReason } = req.validated;
+    const bracelet = await braceletsService.updateStatus(id, status, blockedReason);
     res.json({ bracelet });
   } catch (error) {
     next(error);

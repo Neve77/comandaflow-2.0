@@ -18,10 +18,19 @@ describe('Pedido cancel', () => {
     const openRes = await request(app).post('/comandas/open').set('Authorization', `Bearer ${token}`).send({ number: bracelet, clienteNome: 'Cancel Test', clienteCpf: '12345678901', clienteTelefone: '11999999999' }).expect(201);
     const comandaId = openRes.body.comanda.id;
 
-    const prod = await prisma.produto.findFirst();
+    const prod = await prisma.produto.create({
+      data: {
+        nome: `Produto Cancel ${Date.now()}`,
+        preco: 9.75,
+        categoria: 'Teste',
+        estoque: 10
+      }
+    });
     const pedidoRes = await request(app).post('/pedidos').set('Authorization', `Bearer ${token}`).send({ comandaId, produtoId: prod.id, nome: prod.nome, quantidade: '2', valorUnitario: prod.preco.toString() }).expect(201);
 
     const pedidoId = pedidoRes.body.pedido.id;
+    const productAfterPedido = await prisma.produto.findUnique({ where: { id: prod.id } });
+    expect(productAfterPedido.estoque).toBe(prod.estoque - 2);
 
     const before = await prisma.comanda.findUnique({ where: { id: comandaId } });
     expect(Number(before.total)).toBeGreaterThan(0);
@@ -30,5 +39,7 @@ describe('Pedido cancel', () => {
 
     const after = await prisma.comanda.findUnique({ where: { id: comandaId } });
     expect(Number(after.total)).toBe(0);
+    const productAfterCancel = await prisma.produto.findUnique({ where: { id: prod.id } });
+    expect(productAfterCancel.estoque).toBe(prod.estoque);
   });
 });

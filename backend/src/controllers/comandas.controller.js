@@ -21,8 +21,15 @@ const get = async (req, res, next) => {
 
 const open = async (req, res, next) => {
   try {
-    const { number, clienteNome, clienteCpf, clienteTelefone } = req.validated;
-    const comanda = await comandasService.openComanda({ number, clienteNome, clienteCpf, clienteTelefone });
+    const comanda = await comandasService.openComanda({
+      ...req.validated,
+      userId: req.user?.userId
+    });
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('bracelet:update', { braceletId: comanda.braceletId });
+      io.emit('dashboard:update', { source: 'comanda:open' });
+    }
     res.status(201).json({ comanda });
   } catch (error) {
     next(error);
@@ -42,11 +49,13 @@ const historyByBraceletNumber = async (req, res, next) => {
 const close = async (req, res, next) => {
   try {
     const { id } = req.validated;
-    const comanda = await comandasService.closeComanda(id);
+    const comanda = await comandasService.closeComanda(id, req.user?.userId);
     // Emit real-time update
     const io = req.app.get('io');
     if (io) {
       io.emit('comanda-closed', { comandaId: id });
+      io.emit('cashier:update', { comandaId: id });
+      io.emit('dashboard:update', { source: 'comanda:close' });
     }
     res.json({ comanda });
   } catch (error) {

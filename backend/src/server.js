@@ -2,6 +2,7 @@ const app = require('./app');
 const dotenv = require('dotenv');
 const http = require('http');
 const { Server } = require('socket.io');
+const setupSocket = require('./realtime/socket');
 
 dotenv.config();
 
@@ -25,15 +26,11 @@ const io = new Server(server, {
   }
 });
 
-io.on('connection', (socket) => {
-  console.log('Cliente conectado:', socket.id);
-  socket.on('disconnect', () => {
-    console.log('Cliente desconectado:', socket.id);
-  });
-});
-
 // Make io available in app for emitting events
 app.set('io', io);
+app.set('connectedSockets', 0);
+app.set('mobileClients', 0);
+setupSocket({ io, app });
 
 const PORT = process.env.PORT || 3002;
 
