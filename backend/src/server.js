@@ -34,6 +34,17 @@ setupSocket({ io, app });
 
 const PORT = process.env.PORT || 3002;
 
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Porta ${PORT} ja esta em uso. Reutilize o backend ativo ou libere a porta antes de iniciar outro servidor.`);
+    app.set('serverError', { code: error.code, message: error.message, port: PORT });
+    return;
+  }
+
+  console.error('Erro ao iniciar servidor:', error);
+  app.set('serverError', { code: error.code, message: error.message, port: PORT });
+});
+
 server.listen(PORT, () => {
   console.log(`Backend rodando em http://localhost:${PORT}`);
 });

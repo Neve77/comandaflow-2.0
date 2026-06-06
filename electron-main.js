@@ -1,4 +1,5 @@
 const fs = require('fs');
+const nodeHttp = require('http');
 const os = require('os');
 const path = require('path');
 const { app, BrowserWindow } = require('electron');
@@ -129,6 +130,29 @@ const iconPath = path.join(__dirname, 'build', 'icon.png');
 // keep mainWindow reference to focus/restore when second instance launched
 let mainWindow = null;
 
+function isBackendHealthy(port) {
+  return new Promise((resolve) => {
+    const request = nodeHttp.get(
+      {
+        hostname: '127.0.0.1',
+        port,
+        path: '/health',
+        timeout: 1200,
+      },
+      (response) => {
+        response.resume();
+        resolve(response.statusCode >= 200 && response.statusCode < 300);
+      }
+    );
+
+    request.on('timeout', () => {
+      request.destroy();
+      resolve(false);
+    });
+    request.on('error', () => resolve(false));
+  });
+}
+
 // Ensure single instance — if another instance is started, focus existing and exit
 const gotLock = app.requestSingleInstanceLock && app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -214,7 +238,13 @@ function createWindow() {
   }
 }
 
-function startBackend() {
+async function startBackend() {
+  const existingBackendHealthy = await isBackendHealthy(backendPort);
+  if (existingBackendHealthy) {
+    writeLog('[backend]', `Backend ja esta ativo em http://127.0.0.1:${backendPort}; reutilizando processo existente.`);
+    return;
+  }
+
   const appBasePath = __dirname;
   
   // When packaged with electron-builder, files are under resources/app/
@@ -290,10 +320,14 @@ console.error('[STARTUP] Adding app event listeners...');
 app.whenReady().then(() => {
   console.error('[STARTUP] App is ready!');
   cleanupLegacyCacheDirectories();
-  startBackend();
+  return startBackend();
+}).then(() => {
   console.error('[STARTUP] Backend startup complete, creating window...');
   createWindow();
   console.error('[STARTUP] Window created');
+}).catch((error) => {
+  writeLog('[startup][err]', `Falha ao inicializar: ${error.message}`);
+  createWindow();
 });
 
 app.on('activate', () => {
