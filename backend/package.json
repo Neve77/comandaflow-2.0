@@ -1,6 +1,6 @@
 {
   "name": "comanda-backend",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "scripts": {
     "dev": "nodemon src/server.js",
