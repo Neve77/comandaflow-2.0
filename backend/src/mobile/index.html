@@ -32,6 +32,17 @@
       </div>
     </header>
 
+    <section id="pairingView" class="panel">
+      <h2>Parear dispositivo</h2>
+      <p class="muted">Digite o codigo gerado no painel Conexao Mobile do computador.</p>
+      <label>Codigo de pareamento</label>
+      <input id="pairCode" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" />
+      <label>Nome do celular</label>
+      <input id="pairName" class="input" autocomplete="name" placeholder="Celular do garcom" />
+      <button id="pairDevice" class="btn secondary full">Parear celular</button>
+      <p id="pairMsg" class="muted"></p>
+    </section>
+
     <section id="loginView" class="panel">
       <h2>Entrar</h2>
       <label>PIN do garcom</label>
@@ -116,15 +127,17 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const state = { token: localStorage.getItem('mobile_token'), user: null, socket: null, selectedComanda: null, cart: JSON.parse(localStorage.getItem('mobile_cart') || '[]'), queue: JSON.parse(localStorage.getItem('mobile_queue') || '[]') };
+    const state = { token: localStorage.getItem('mobile_token'), user: null, socket: null, deviceSession: JSON.parse(localStorage.getItem('mobile_device_session') || 'null'), selectedComanda: null, cart: JSON.parse(localStorage.getItem('mobile_cart') || '[]'), queue: JSON.parse(localStorage.getItem('mobile_queue') || '[]') };
     const $ = (id) => document.getElementById(id);
     const money = (v) => Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    const headers = () => ({ 'Content-Type':'application/json', Authorization:`Bearer ${state.token}` });
+    const headers = () => ({ 'Content-Type':'application/json', Authorization:`Bearer ${state.token}`, 'X-Device-Name': state.deviceSession?.name || 'mobile-web', 'X-Device-Session': state.deviceSession?.id || '' });
     const persist = () => { localStorage.setItem('mobile_cart', JSON.stringify(state.cart)); localStorage.setItem('mobile_queue', JSON.stringify(state.queue)); };
     async function api(path, options={}){ const res = await fetch(path,{...options,headers:{...headers(),...(options.headers||{})}}); const data = await res.json().catch(()=>({})); if(!res.ok) throw new Error(data.message||'Falha na operacao'); return data; }
     function setConn(ok,msg){ $('conn').textContent = msg || (ok?'online':'offline'); $('conn').className = `chip ${ok?'ok':'bad'}`; }
+    function renderPairing(){ if(state.deviceSession){ $('pairMsg').innerHTML = `<span class="oktext">Celular pareado: ${state.deviceSession.name || 'Dispositivo movel'}</span>`; $('pairCode').value=''; } }
     function show(view){ document.querySelectorAll('[data-view]').forEach(el=>el.classList.toggle('hidden',el.dataset.view!==view)); document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===view)); }
-    async function login(payload){ $('loginMsg').textContent='Entrando...'; try{ const data=await fetch('/mobile/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(async r=>{const d=await r.json(); if(!r.ok) throw new Error(d.message); return d}); state.token=data.token; state.user=data.user; localStorage.setItem('mobile_token',state.token); $('loginView').classList.add('hidden'); $('mainView').classList.remove('hidden'); $('tabs').classList.remove('hidden'); connectSocket(); await boot(); }catch(e){ $('loginMsg').textContent=e.message; } }
+    async function pairDevice(){ $('pairMsg').textContent='Pareando...'; try{ const payload={pairingCode:$('pairCode').value.trim(),name:$('pairName').value.trim()||'Celular do garcom'}; const data=await fetch('/devices/pairing/confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(async r=>{const d=await r.json(); if(!r.ok) throw new Error(d.message||'Falha ao parear'); return d}); state.deviceSession=data.session; localStorage.setItem('mobile_device_session',JSON.stringify(state.deviceSession)); renderPairing(); }catch(e){ $('pairMsg').textContent=e.message; } }
+    async function login(payload){ $('loginMsg').textContent='Entrando...'; try{ const data=await fetch('/mobile/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(async r=>{const d=await r.json(); if(!r.ok) throw new Error(d.message); return d}); state.token=data.token; state.user=data.user; localStorage.setItem('mobile_token',state.token); $('pairingView').classList.add('hidden'); $('loginView').classList.add('hidden'); $('mainView').classList.remove('hidden'); $('tabs').classList.remove('hidden'); connectSocket(); await boot(); }catch(e){ $('loginMsg').textContent=e.message; } }
     function connectSocket(){ if(!state.token||!window.io)return; state.socket=io('/',{auth:{token:state.token,room:'mobile'},reconnectionDelay:500,reconnectionDelayMax:3000}); state.socket.on('connect',()=>{setConn(true,'online'); state.socket.emit('mobile:join',{room:'mobile'}); syncQueue();}); state.socket.on('disconnect',()=>setConn(false,'reconectando')); state.socket.on('connect_error',()=>setConn(false,'offline')); state.socket.on('comanda:atualizada',({comanda})=>{ if(state.selectedComanda&&comanda.id===state.selectedComanda.id){state.selectedComanda=comanda; renderComanda();} loadDashboard(); }); state.socket.on('pedido:confirmado',({comanda})=>{ if(comanda){state.selectedComanda=comanda; renderComanda();} loadDashboard(); }); }
     async function boot(){ await Promise.all([loadDashboard(), loadProducts(), loadFreeBracelets()]); renderCart(); updateQueue(); }
     async function loadDashboard(){ try{ const d=await api('/mobile/dashboard'); $('mOpen').textContent=d.dashboard.openComandas; $('mOrders').textContent=d.dashboard.pedidosHoje; $('mClients').textContent=d.dashboard.clientesAtendidosHoje; $('mBands').textContent=d.dashboard.pulseirasAtivas; }catch(e){} }
@@ -138,9 +151,10 @@
     async function sendOrder(){ if(!state.selectedComanda){$('cartMsg').textContent='Selecione uma comanda antes.';return;} if(!state.cart.length){$('cartMsg').textContent='Carrinho vazio.';return;} const jobs=state.cart.map(i=>({comandaId:state.selectedComanda.id,produtoId:i.produtoId,quantidade:i.quantidade})); $('cartMsg').textContent='Enviando...'; try{ for(const job of jobs) await api('/mobile/pedidos',{method:'POST',body:JSON.stringify(job)}); state.cart=[]; persist(); renderCart(); $('cartMsg').textContent='Pedido enviado.'; const d=await api('/mobile/comandas/'+state.selectedComanda.id); state.selectedComanda=d.comanda; renderComanda(); loadDashboard(); }catch(e){ state.queue.push(...jobs); state.cart=[]; persist(); renderCart(); updateQueue(); $('cartMsg').textContent='Conexao perdida. Pedido salvo para sincronizar.'; } }
     async function syncQueue(){ if(!state.queue.length||!state.token)return; const pending=[...state.queue]; state.queue=[]; for(const job of pending){ try{ await api('/mobile/pedidos',{method:'POST',body:JSON.stringify(job)}); }catch(e){ state.queue.push(job); } } persist(); updateQueue(); loadDashboard(); }
     function updateQueue(){ $('queueInfo').textContent=state.queue.length?`${state.queue.length} pedido(s) pendente(s).`:'Nenhum pedido pendente.'; }
-    let timer; $('searchInput').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(search,180)}); $('pinLogin').onclick=()=>login({pin:$('pin').value}); $('userLogin').onclick=()=>login({email:$('email').value,password:$('password').value}); $('openComanda').onclick=openComanda; $('category').onchange=loadProducts; $('sendOrder').onclick=sendOrder; $('syncNow').onclick=syncQueue;
+    let timer; $('searchInput').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(search,180)}); $('pairDevice').onclick=pairDevice; $('pinLogin').onclick=()=>login({pin:$('pin').value}); $('userLogin').onclick=()=>login({email:$('email').value,password:$('password').value}); $('openComanda').onclick=openComanda; $('category').onchange=loadProducts; $('sendOrder').onclick=sendOrder; $('syncNow').onclick=syncQueue;
     document.body.addEventListener('click',async(e)=>{ const t=e.target.closest('button'); if(!t)return; if(t.dataset.tab)show(t.dataset.tab); if(t.dataset.bracelet)$('openBracelet').value=t.dataset.bracelet; if(t.dataset.client){$('openName').value=t.dataset.name;$('openCpf').value=t.dataset.cpf;$('openPhone').value=t.dataset.phone;show('open')} if(t.dataset.comanda){const d=await api('/mobile/comandas/'+t.dataset.comanda);state.selectedComanda=d.comanda;renderComanda();show('comanda')} if(t.dataset.add)addProduct(t.dataset.add,Number(t.dataset.q)); if(t.dataset.rm){state.cart.splice(Number(t.dataset.rm),1);persist();renderCart();} });
-    if(state.token){ $('loginView').classList.add('hidden'); $('mainView').classList.remove('hidden'); $('tabs').classList.remove('hidden'); connectSocket(); boot(); }
+    renderPairing();
+    if(state.token){ $('pairingView').classList.add('hidden'); $('loginView').classList.add('hidden'); $('mainView').classList.remove('hidden'); $('tabs').classList.remove('hidden'); connectSocket(); boot(); }
   </script>
 </body>
 </html>

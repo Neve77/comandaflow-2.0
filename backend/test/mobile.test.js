@@ -4,6 +4,7 @@ const prisma = require('../src/prisma/client');
 
 describe('Mobile waiter module', () => {
   let token;
+  let adminToken;
 
   afterAll(async () => {
     await prisma.$disconnect();
@@ -26,6 +27,30 @@ describe('Mobile waiter module', () => {
 
     expect(typeof dashboard.body.dashboard.openComandas).toBe('number');
     expect(typeof dashboard.body.dashboard.pedidosHoje).toBe('number');
+  });
+
+  test('mobile device can confirm desktop pairing code', async () => {
+    const adminLogin = await request(app)
+      .post('/auth/login')
+      .send({ email: 'admin@comanda.local', password: 'Pass@1234' })
+      .expect(200);
+    adminToken = adminLogin.body.token;
+
+    const pairing = await request(app)
+      .post('/devices/pairing')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ role: 'garcom', ttlMinutes: 5 })
+      .expect(201);
+
+    const confirm = await request(app)
+      .post('/devices/pairing/confirm')
+      .send({ pairingCode: pairing.body.pairingCode, name: 'Celular Teste' })
+      .expect(200);
+
+    expect(confirm.body.session.name).toBe('Celular Teste');
+    expect(confirm.body.session.role).toBe('garcom');
+    expect(confirm.body.session.status).toBe('ativo');
+    expect(confirm.body.session.pairingCode).toBeNull();
   });
 
   test('mobile exposes universal search and does not expose forbidden close action', async () => {
